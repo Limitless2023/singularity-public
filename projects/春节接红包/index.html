@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧧 春节接红包大作战</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Ma Shan Zheng', cursive;
+            overflow: hidden;
+        }
+        
+        h1 {
+            color: #ffd700;
+            font-size: 3rem;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5), 2px 2px 0 #e63946;
+            margin-bottom: 10px;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { text-shadow: 0 0 20px rgba(255, 215, 0, 0.5), 2px 2px 0 #e63946; }
+            to { text-shadow: 0 0 40px rgba(255, 215, 0, 0.8), 2px 2px 0 #e63946; }
+        }
+        
+        #score-board {
+            color: #fff;
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 400px;
+            height: 600px;
+            background: linear-gradient(180deg, #1a1a2e 0%, #2d1b4e 100%);
+            border-radius: 20px;
+            border: 4px solid #ffd700;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+            overflow: hidden;
+        }
+        
+        #player {
+            position: absolute;
+            bottom: 20px;
+            width: 60px;
+            height: 60px;
+            font-size: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: left 0.1s ease;
+            z-index: 10;
+        }
+        
+        .red-packet {
+            position: absolute;
+            font-size: 40px;
+            animation: fall linear forwards;
+            z-index: 5;
+        }
+        
+        @keyframes fall {
+            from { top: -50px; }
+            to { top: 620px; }
+        }
+        
+        .firework {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: explode 1s ease-out forwards;
+        }
+        
+        @keyframes explode {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+        
+        #start-btn, #restart-btn {
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            font-family: 'Ma Shan Zheng', cursive;
+            background: linear-gradient(45deg, #e63946, #ffd700);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        #start-btn:hover, #restart-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #ffd700;
+            font-size: 2rem;
+            z-index: 20;
+        }
+        
+        #instructions {
+            color: #aaa;
+            font-size: 1rem;
+            margin-top: 15px;
+        }
+        
+        .lucky {
+            color: #ffd700;
+            font-size: 1.2rem;
+            animation: luckyPulse 0.5s ease;
+        }
+        
+        @keyframes luckyPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+        }
+    </style>
+</head>
+<body>
+    <h1>🧧 春节接红包 🧧</h1>
+    <div id="score-board">得分: <span id="score">0</span> | 最高: <span id="high-score">0</span></div>
+    <div id="game-container">
+        <div id="player">🧧</div>
+        <div id="game-over">
+            <div>游戏结束!</div>
+            <div style="font-size: 1.5rem; margin-top: 10px;">得分: <span id="final-score">0</span></div>
+            <button id="restart-btn" onclick="restartGame()">再来一次</button>
+        </div>
+    </div>
+    <button id="start-btn" onclick="startGame()">开始游戏</button>
+    <div id="instructions">← → 方向键 或 A D 控制移动 | 手机左右滑动</div>
+
+    <script>
+        const container = document.getElementById('game-container');
+        const player = document.getElementById('player');
+        const scoreDisplay = document.getElementById('score');
+        const highScoreDisplay = document.getElementById('high-score');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const startBtn = document.getElementById('start-btn');
+        
+        let score = 0;
+        let highScore = localStorage.getItem('chineseNewYearHighScore') || 0;
+        let gameRunning = false;
+        let playerX = 170;
+        let keys = {};
+        let redPackets = [];
+        let speed = 3;
+        let spawnRate = 1500;
+        
+        const playerEmojis = ['🧧', '🐲', '🐉', '🦁'];
+        let currentEmoji = 0;
+        
+        highScoreDisplay.textContent = highScore;
+        
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                movePlayer(-20);
+            }
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                movePlayer(20);
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+        
+        // Touch controls
+        let touchStartX = 0;
+        container.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+        });
+        
+        container.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touchX = e.touches[0].clientX;
+            const diff = touchX - touchStartX;
+            if (Math.abs(diff) > 10) {
+                movePlayer(diff > 0 ? 15 : -15);
+                touchStartX = touchX;
+            }
+        });
+        
+        function movePlayer(delta) {
+            playerX += delta;
+            if (playerX < 0) playerX = 0;
+            if (playerX > 340) playerX = 340;
+            player.style.left = playerX + 'px';
+        }
+        
+        function startGame() {
+            gameRunning = true;
+            score = 0;
+            speed = 3;
+            spawnRate = 1500;
+            scoreDisplay.textContent = '0';
+            gameOverScreen.style.display = 'none';
+            startBtn.style.display = 'none';
+            
+            // Clear existing red packets
+            document.querySelectorAll('.red-packet').forEach(p => p.remove());
+            redPackets = [];
+            
+            playerX = 170;
+            player.style.left = playerX + 'px';
+            
+            spawnRedPacket();
+            gameLoop();
+        }
+        
+        function spawnRedPacket() {
+            if (!gameRunning) return;
+            
+            const packet = document.createElement('div');
+            packet.className = 'red-packet';
+            
+            // 10% chance for lucky packet (福)
+            const isLucky = Math.random() < 0.1;
+            packet.textContent = isLucky ? '福' : '🧧';
+            packet.dataset.lucky = isLucky;
+            
+            packet.style.left = Math.random() * 350 + 'px';
+            packet.style.animationDuration = (4000 / speed) + 'ms';
+            
+            container.appendChild(packet);
+            redPackets.push(packet);
+            
+            setTimeout(() => {
+                if (Math.random() < 0.3) {
+                    spawnRedPacket();
+                }
+            }, spawnRate / 2);
+            
+            setTimeout(spawnRedPacket, spawnRate);
+        }
+        
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // Move player with arrow keys
+            if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+                movePlayer(-5);
+            }
+            if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+                movePlayer(5);
+            }
+            
+            // Check collisions
+            const playerRect = {
+                x: playerX,
+                y: 520,
+                width: 50,
+                height: 50
+            };
+            
+            redPackets.forEach((packet, index) => {
+                const rect = packet.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                
+                const packetX = rect.left - containerRect.left;
+                const packetY = rect.top - containerRect.top;
+                
+                if (packetY > 500 && packetY < 580 && packetX > playerX - 30 && packetX < playerX + 50) {
+                    // Caught!
+                    const isLucky = packet.dataset.lucky === 'true';
+                    if (isLucky) {
+                        score += 10;
+                        showFloatingText('+10 福!', playerX, 480, true);
+                    } else {
+                        score += 1;
+                        showFloatingText('+1', playerX, 480);
+                    }
+                    
+                    // Change player emoji occasionally
+                    currentEmoji = (currentEmoji + 1) % playerEmojis;
+                    player.textContent = playerEmojis[currentEmoji];
+                    
+                    packet.remove();
+                    redPackets.splice(index, 1);
+                    scoreDisplay.textContent = score;
+                    
+                    // Increase difficulty
+                    if (score > 0 && score % 10 === 0) {
+                        speed += 0.2;
+                        spawnRate = Math.max(500, spawnRate - 50);
+                    }
+                }
+                
+                // Remove if off screen
+                if (packetY > 600) {
+                    packet.remove();
+                    redPackets.splice(index, 1);
+                }
+            });
+            
+            // Check game over (missed too many)
+            if (redPackets.length > 15) {
+                gameOver();
+                return;
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function showFloatingText(text, x, y, isLucky = false) {
+            const float = document.createElement('div');
+            float.textContent = text;
+            float.style.position = 'absolute';
+            float.style.left = x + 'px';
+            float.style.top = y + 'px';
+            float.style.color = isLucky ? '#ffd700' : '#fff';
+            float.style.fontSize = isLucky ? '1.5rem' : '1rem';
+            float.style.fontWeight = 'bold';
+            float.style.animation = 'luckyPulse 0.5s ease forwards';
+            float.style.zIndex = '15';
+            container.appendChild(float);
+            
+            setTimeout(() => float.remove(), 500);
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            finalScoreDisplay.textContent = score;
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('chineseNewYearHighScore', highScore);
+                highScoreDisplay.textContent = highScore;
+            }
+            
+            gameOverScreen.style.display = 'flex';
+            startBtn.style.display = 'block';
+            startBtn.textContent = '再来一次';
+        }
+        
+        function restartGame() {
+            startGame();
+        }
+        
+        // Create background fireworks occasionally
+        function createFirework() {
+            if (!gameRunning) return;
+            
+            const firework = document.createElement('div');
+            firework.className = 'firework';
+            firework.style.left = Math.random() * 400 + 'px';
+            firework.style.top = Math.random() * 300 + 'px';
+            firework.style.background = ['#ffd700', '#e63946', '#00ff00', '#ff6b6b'][Math.floor(Math.random() * 4)];
+            container.appendChild(firework);
+            
+            setTimeout(() => firework.remove(), 1000);
+        }
+        
+        setInterval(createFirework, 2000);
+    </script>
+</body>
+</html>
